@@ -1,0 +1,657 @@
+#============================================================
+# 📊 TELCO CUSTOMER RETENTION & CHURN ANALYSIS
+# Data Science & Analytics – Task 2
+# Google Colab | Python
+# ============================================================
+
+!pip -q install plotly
+
+import pandas as pd
+import numpy as np
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+from google.colab import files
+from IPython.display import display, HTML
+
+# ============================================================
+# 1️⃣ UPLOAD DATASET
+# ============================================================
+
+print("📂 Upload your Telco Customer Churn CSV file")
+
+uploaded = files.upload()
+
+file_name = list(uploaded.keys())[0]
+
+df = pd.read_csv(file_name)
+
+print("✅ Dataset loaded successfully!")
+
+# ============================================================
+# 2️⃣ CLEAN DATA
+# ============================================================
+
+df.columns = df.columns.str.strip()
+
+# Convert TotalCharges into numbers
+if "TotalCharges" in df.columns:
+    df["TotalCharges"] = pd.to_numeric(
+        df["TotalCharges"],
+        errors="coerce"
+    )
+
+# Remove duplicate customers
+if "customerID" in df.columns:
+    df = df.drop_duplicates(subset="customerID")
+
+# Remove missing Churn values
+df = df.dropna(subset=["Churn"])
+
+print(f"👥 Customers analysed: {len(df):,}")
+
+# ============================================================
+# 3️⃣ KPI CALCULATIONS
+# ============================================================
+
+total_customers = len(df)
+
+churned = (df["Churn"] == "Yes").sum()
+
+retained = (df["Churn"] == "No").sum()
+
+churn_rate = churned / total_customers * 100
+
+retention_rate = retained / total_customers * 100
+
+# ============================================================
+# 4️⃣ TENURE GROUPS
+# ============================================================
+
+def tenure_group(x):
+
+    if x <= 6:
+        return "0–6 Months"
+
+    elif x <= 12:
+        return "7–12 Months"
+
+    elif x <= 24:
+        return "13–24 Months"
+
+    elif x <= 36:
+        return "25–36 Months"
+
+    else:
+        return "37+ Months"
+
+
+df["Tenure Group"] = df["tenure"].apply(tenure_group)
+
+tenure_order = [
+    "0–6 Months",
+    "7–12 Months",
+    "13–24 Months",
+    "25–36 Months",
+    "37+ Months"
+]
+
+# ============================================================
+# 5️⃣ CHURN ANALYSIS
+# ============================================================
+
+# Contract
+contract = (
+    df[df["Churn"] == "Yes"]
+    .groupby("Contract")
+    .size()
+    .sort_values(ascending=False)
+)
+
+# Tenure
+tenure = (
+    df[df["Churn"] == "Yes"]
+    .groupby("Tenure Group")
+    .size()
+    .reindex(tenure_order, fill_value=0)
+)
+
+# Payment Method
+payment = (
+    df[df["Churn"] == "Yes"]
+    .groupby("PaymentMethod")
+    .size()
+    .sort_values(ascending=False)
+)
+
+# Internet Service
+internet = (
+    df[df["Churn"] == "Yes"]
+    .groupby("InternetService")
+    .size()
+    .sort_values(ascending=False)
+)
+
+# ============================================================
+# 6️⃣ FIND HIGHEST VALUES
+# ============================================================
+
+highest_contract = contract.index[0]
+highest_contract_count = contract.iloc[0]
+
+highest_tenure = tenure.idxmax()
+highest_tenure_count = tenure.max()
+
+highest_payment = payment.index[0]
+highest_payment_count = payment.iloc[0]
+
+highest_internet = internet.index[0]
+highest_internet_count = internet.iloc[0]
+
+# ============================================================
+# 7️⃣ DASHBOARD HEADER
+# ============================================================
+
+display(HTML("""
+
+<div style="
+background:linear-gradient(135deg,#14532d,#16a34a);
+padding:30px;
+border-radius:20px;
+font-family:Arial;
+margin-bottom:20px;
+">
+
+<h1 style="
+color:white;
+font-size:34px;
+margin:0;
+font-weight:700;
+">
+📊 Telecom Customer Retention & Churn Dashboard
+</h1>
+
+<p style="
+color:white;
+font-size:17px;
+margin-top:10px;
+">
+Customer Retention • Churn Analysis • Business Insights
+</p>
+
+</div>
+
+"""))
+
+# ============================================================
+# 8️⃣ KPI CARDS
+# ============================================================
+
+display(HTML(f"""
+
+<div style="
+display:grid;
+grid-template-columns:repeat(4,1fr);
+gap:18px;
+font-family:Arial;
+">
+
+<!-- TOTAL CUSTOMERS -->
+
+<div style="
+background:white;
+padding:25px;
+border-radius:18px;
+text-align:center;
+box-shadow:0 5px 20px rgba(0,0,0,0.15);
+border:1px solid #e5e7eb;
+">
+
+<div style="font-size:35px;">👥</div>
+
+<div style="
+color:#111827;
+font-size:17px;
+font-weight:700;
+margin-top:8px;
+">
+Total Customers
+</div>
+
+<div style="
+color:#16a34a;
+font-size:32px;
+font-weight:800;
+margin-top:10px;
+">
+{total_customers:,}
+</div>
+
+</div>
+
+
+<!-- CHURNED -->
+
+<div style="
+background:white;
+padding:25px;
+border-radius:18px;
+text-align:center;
+box-shadow:0 5px 20px rgba(0,0,0,0.15);
+border:1px solid #e5e7eb;
+">
+
+<div style="font-size:35px;">❌</div>
+
+<div style="
+color:#111827;
+font-size:17px;
+font-weight:700;
+margin-top:8px;
+">
+Churned Customers
+</div>
+
+<div style="
+color:#dc2626;
+font-size:32px;
+font-weight:800;
+margin-top:10px;
+">
+{churned:,}
+</div>
+
+</div>
+
+
+<!-- RETAINED -->
+
+<div style="
+background:white;
+padding:25px;
+border-radius:18px;
+text-align:center;
+box-shadow:0 5px 20px rgba(0,0,0,0.15);
+border:1px solid #e5e7eb;
+">
+
+<div style="font-size:35px;">✅</div>
+
+<div style="
+color:#111827;
+font-size:17px;
+font-weight:700;
+margin-top:8px;
+">
+Retained Customers
+</div>
+
+<div style="
+color:#ec4899;
+font-size:32px;
+font-weight:800;
+margin-top:10px;
+">
+{retained:,}
+</div>
+
+</div>
+
+
+<!-- CHURN RATE -->
+
+<div style="
+background:white;
+padding:25px;
+border-radius:18px;
+text-align:center;
+box-shadow:0 5px 20px rgba(0,0,0,0.15);
+border:1px solid #e5e7eb;
+">
+
+<div style="font-size:35px;">📈</div>
+
+<div style="
+color:#111827;
+font-size:17px;
+font-weight:700;
+margin-top:8px;
+">
+Churn Rate
+</div>
+
+<div style="
+color:#2563eb;
+font-size:32px;
+font-weight:800;
+margin-top:10px;
+">
+{churn_rate:.2f}%
+</div>
+
+</div>
+
+</div>
+
+"""))
+
+# ============================================================
+# 9️⃣ CHURN BREAKDOWN CHARTS
+# ============================================================
+
+fig = make_subplots(
+    rows=2,
+    cols=2,
+    subplot_titles=[
+        "❌ Churn by Contract",
+        "⏳ Churn by Tenure",
+        "💳 Churn by Payment Method",
+        "🌐 Churn by Internet Service"
+    ],
+    vertical_spacing=0.20,
+    horizontal_spacing=0.10
+)
+
+# Contract
+fig.add_trace(
+    go.Bar(
+        x=contract.index,
+        y=contract.values,
+        text=contract.values,
+        textposition="outside",
+        marker_color="#22c55e"
+    ),
+    row=1,
+    col=1
+)
+
+# Tenure
+fig.add_trace(
+    go.Bar(
+        x=tenure.index,
+        y=tenure.values,
+        text=tenure.values,
+        textposition="outside",
+        marker_color="#14b8a6"
+    ),
+    row=1,
+    col=2
+)
+
+# Payment
+fig.add_trace(
+    go.Bar(
+        x=payment.index,
+        y=payment.values,
+        text=payment.values,
+        textposition="outside",
+        marker_color="#3b82f6"
+    ),
+    row=2,
+    col=1
+)
+
+# Internet
+fig.add_trace(
+    go.Bar(
+        x=internet.index,
+        y=internet.values,
+        text=internet.values,
+        textposition="outside",
+        marker_color="#f59e0b"
+    ),
+    row=2,
+    col=2
+)
+
+# ============================================================
+# 🔟 CHART STYLING
+# ============================================================
+
+fig.update_layout(
+
+    height=900,
+
+    template="plotly_white",
+
+    showlegend=False,
+
+    title={
+        "text":"Customer Churn Breakdown",
+        "x":0.5,
+        "font":{
+            "size":30,
+            "color":"#111827"
+        }
+    },
+
+    margin=dict(
+        t=100,
+        l=60,
+        r=60,
+        b=100
+    ),
+
+    paper_bgcolor="white",
+
+    plot_bgcolor="white"
+)
+
+# Make subplot titles DARK
+fig.update_annotations(
+    font={
+        "size":18,
+        "color":"#111827"
+    }
+)
+
+# Make axes dark
+fig.update_xaxes(
+    tickfont=dict(
+        color="#111827",
+        size=12
+    ),
+    title_font=dict(
+        color="#111827"
+    )
+)
+
+fig.update_yaxes(
+    tickfont=dict(
+        color="#111827",
+        size=12
+    ),
+    title_font=dict(
+        color="#111827"
+    ),
+    gridcolor="#e5e7eb"
+)
+
+fig.show()
+
+# ============================================================
+# 1️⃣1️⃣ RETENTION DONUT
+# ============================================================
+
+donut = go.Figure(
+
+    go.Pie(
+
+        labels=[
+            "Retained Customers",
+            "Churned Customers"
+        ],
+
+        values=[
+            retained,
+            churned
+        ],
+
+        hole=0.62,
+
+        textinfo="label+percent",
+
+        textfont=dict(
+            size=15,
+            color="#111827"
+        ),
+
+        marker=dict(
+            colors=[
+                "#f472b6",
+                "#ef4444"
+            ]
+        )
+    )
+)
+
+donut.update_layout(
+
+    title={
+        "text":"Customer Retention Overview",
+        "x":0.5,
+        "font":{
+            "size":28,
+            "color":"#111827"
+        }
+    },
+
+    height=550,
+
+    template="plotly_white",
+
+    paper_bgcolor="white"
+)
+
+donut.show()
+
+# ============================================================
+# 1️⃣2️⃣ KEY INSIGHTS
+# ============================================================
+
+display(HTML(f"""
+
+<div style="
+background:white;
+padding:30px;
+border-radius:20px;
+font-family:Arial;
+margin-top:25px;
+box-shadow:0 5px 20px rgba(0,0,0,0.15);
+border:1px solid #e5e7eb;
+">
+
+<h2 style="
+color:#111827;
+font-size:28px;
+margin-bottom:20px;
+">
+💡 Key Insights
+</h2>
+
+<p style="
+color:#111827;
+font-size:17px;
+font-weight:600;
+line-height:1.8;
+">
+🔹 <b>Contract:</b>
+Month-to-month customers have the highest churn
+(<b>{highest_contract_count:,}</b> customers).
+</p>
+
+<p style="
+color:#111827;
+font-size:17px;
+font-weight:600;
+line-height:1.8;
+">
+🔹 <b>Tenure:</b>
+The highest churn is seen in the
+<b>{highest_tenure}</b> group
+(<b>{highest_tenure_count:,}</b> customers).
+</p>
+
+<p style="
+color:#111827;
+font-size:17px;
+font-weight:600;
+line-height:1.8;
+">
+🔹 <b>Payment Method:</b>
+<b>{highest_payment}</b> has the highest number of
+churned customers
+(<b>{highest_payment_count:,}</b>).
+</p>
+
+<p style="
+color:#111827;
+font-size:17px;
+font-weight:600;
+line-height:1.8;
+">
+🔹 <b>Internet Service:</b>
+<b>{highest_internet}</b> has the highest number of
+churned customers
+(<b>{highest_internet_count:,}</b>).
+</p>
+
+<p style="
+color:#111827;
+font-size:17px;
+font-weight:600;
+line-height:1.8;
+">
+🔹 <b>Overall:</b>
+Customer churn rate is
+<b style="color:#dc2626;">
+{churn_rate:.2f}%
+</b>,
+while retention rate is
+<b style="color:#ec4899;">
+{retention_rate:.2f}%
+</b>.
+</p>
+
+</div>
+
+"""))
+
+# ============================================================
+# 1️⃣3️⃣ FINAL SUMMARY
+# ============================================================
+
+display(HTML(f"""
+
+<div style="
+background:linear-gradient(135deg,#14532d,#16a34a);
+padding:25px;
+border-radius:18px;
+margin-top:25px;
+font-family:Arial;
+text-align:center;
+">
+
+<h2 style="
+color:white;
+margin:0;
+">
+🎉 Customer Churn Analysis Completed!
+</h2>
+
+<p style="
+color:white;
+font-size:16px;
+margin-top:10px;
+">
+Dataset analysed: {total_customers:,} customers
+&nbsp; | &nbsp;
+Churn Rate: {churn_rate:.2f}%
+&nbsp; | &nbsp;
+Retention Rate: {retention_rate:.2f}%
+</p>
+
+</div>
+
+"""))
+
+print("✅ ANALYSIS COMPLETED SUCCESSFULLY!")
